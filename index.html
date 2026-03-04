@@ -764,9 +764,12 @@
 
     const mdFiles = files.filter(f => f.name.endsWith('.md') && f.name !== 'README.md');
 
-    // Fetch each file content
+    // Fetch each file content via API (works for private repos)
     const promises = mdFiles.map(async (file) => {
-      const res = await fetch(file.download_url, { headers });
+      const res = await fetch(`https://api.github.com/repos/${repo}/contents/${path}/${file.name}`, {
+        headers: { ...headers, 'Accept': 'application/vnd.github.v3.raw' }
+      });
+      if (!res.ok) return null;
       const text = await res.text();
       return parseMarkdown(text, file.name);
     });
