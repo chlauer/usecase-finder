@@ -512,6 +512,14 @@
     overflow-y: auto;
   }
 
+  .modal-section-content.body-content {
+    font-size: 0.85rem;
+    line-height: 1.7;
+    max-height: 500px;
+    overflow-y: auto;
+    padding-right: 8px;
+  }
+
   .modal-meta {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -843,7 +851,11 @@
       // Collect unique values for this field
       const values = new Set();
       for (const uc of useCases) {
-        const val = uc[f.key];
+        let val = uc[f.key];
+        // Normalize complexity values to short labels
+        if (f.key === 'loesung_komplexitaet' || f.key === 'komplexitaet') {
+          val = normalizeComplexity(val);
+        }
         if (Array.isArray(val)) val.forEach(v => values.add(v));
         else if (val) values.add(String(val));
       }
@@ -963,7 +975,11 @@
 
       // Apply active filters
       for (const [field, value] of Object.entries(activeFilters)) {
-        const ucVal = uc[field];
+        let ucVal = uc[field];
+        // Normalize complexity for matching
+        if (field === 'loesung_komplexitaet' || field === 'komplexitaet') {
+          ucVal = normalizeComplexity(ucVal);
+        }
         if (Array.isArray(ucVal)) {
           if (!ucVal.includes(value)) return false;
         } else {
@@ -994,7 +1010,7 @@
 
     container.innerHTML = items.map((uc, i) => {
       const title = uc.titel || uc.title || uc._filename;
-      const complexity = uc.loesung_komplexitaet || uc.komplexitaet || '';
+      const complexity = normalizeComplexity(uc.loesung_komplexitaet || uc.komplexitaet);
       const desc = uc.problem_beschreibung || '';
       const rollen = Array.isArray(uc.zielgruppe_rolle || uc.rolle) ? (uc.zielgruppe_rolle || uc.rolle) : [];
       const typ = uc.loesung_typ || uc.typ || '';
@@ -1042,7 +1058,7 @@
 
       <div class="modal-meta">
         ${metaItem('Typ', Array.isArray(uc.loesung_typ) ? uc.loesung_typ.join(', ') : uc.loesung_typ)}
-        ${metaItem('Komplexität', uc.loesung_komplexitaet || uc.komplexitaet)}
+        ${metaItem('Komplexität', normalizeComplexity(uc.loesung_komplexitaet || uc.komplexitaet))}
         ${metaItem('Tools', Array.isArray(uc.loesung_tools || uc.tools) ? (uc.loesung_tools || uc.tools).join(', ') : (uc.loesung_tools || uc.tools))}
         ${metaItem('Ökosystem', Array.isArray(uc.oekosystem) ? uc.oekosystem.join(', ') : uc.oekosystem)}
         ${metaItem('Dauer', uc.aufgabe_dauer ? uc.aufgabe_dauer + ' Min.' : '')}
@@ -1074,6 +1090,14 @@
           <div class="modal-section-content">${escHtml(uc.loesung_anleitung || uc.ki_anleitung_installation)}</div>
         </div>
       ` : ''}
+
+      ${uc._body ? `
+        <hr class="modal-divider">
+        <div class="modal-section">
+          <div class="modal-section-label">Vollständiger Inhalt</div>
+          <div class="modal-section-content body-content">${renderMarkdown(uc._body)}</div>
+        </div>
+      ` : ''}
     `;
 
     document.getElementById('modalOverlay').classList.add('show');
@@ -1093,6 +1117,34 @@
   function escHtml(str) {
     if (!str) return '';
     return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function normalizeComplexity(val) {
+    if (!val) return '';
+    const s = String(val).toLowerCase().trim();
+    if (s.startsWith('sofort')) return 'sofort';
+    if (s.startsWith('einfach') || s.startsWith('niedrig')) return 'einfach';
+    if (s.startsWith('mittel')) return 'mittel';
+    if (s.startsWith('fortgeschritten') || s.startsWith('hoch')) return 'fortgeschritten';
+    return s.split('(')[0].split(' ')[0].trim();
+  }
+
+  function renderMarkdown(text) {
+    if (!text) return '';
+    return escHtml(text)
+      // Headers
+      .replace(/^### (.+)$/gm, '<h4 style="font-size:0.85rem;font-weight:600;margin:16px 0 6px;color:var(--accent-light)">$1</h4>')
+      .replace(/^## (.+)$/gm, '<h3 style="font-size:0.95rem;font-weight:600;margin:20px 0 8px;color:var(--text)">$1</h3>')
+      // Bold
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      // Blockquotes (prompts)
+      .replace(/^&gt; (.+)$/gm, '<div style="border-left:3px solid var(--accent);padding:10px 14px;margin:8px 0;background:var(--bg);border-radius:0 6px 6px 0;font-family:JetBrains Mono,monospace;font-size:0.8rem;white-space:pre-wrap">$1</div>')
+      // Lists
+      .replace(/^- (.+)$/gm, '<div style="padding-left:16px;margin:3px 0">• $1</div>')
+      .replace(/^\d+\. (.+)$/gm, '<div style="padding-left:16px;margin:3px 0">$1</div>')
+      // Line breaks
+      .replace(/\n\n/g, '<br><br>')
+      .replace(/\n/g, '<br>');
   }
 
   // ── Keyboard shortcut ──
