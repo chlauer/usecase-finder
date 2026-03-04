@@ -713,13 +713,16 @@
 
     try {
       // Test connection
-      const res = await fetch(`https://api.github.com/repos/${repo}/contents/${path}`, {
-        headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github.v3+json' }
+      const url = `https://api.github.com/repos/${repo}/contents/${path}`;
+      const res = await fetch(url, {
+        headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github.v3+json' },
+        mode: 'cors'
       });
 
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.message || `HTTP ${res.status}`);
+        let msg = `HTTP ${res.status}`;
+        try { const data = await res.json(); msg = data.message || msg; } catch(x) {}
+        throw new Error(msg);
       }
 
       config = { repo, path, token };
@@ -728,6 +731,8 @@
     } catch(e) {
       errEl.textContent = `Fehler: ${e.message}`;
       errEl.style.display = 'block';
+      // Debug info
+      errEl.innerHTML += `<br><span style="font-size:0.7rem;opacity:0.6">URL: api.github.com/repos/${repo}/contents/${path}<br>Token: ${token.substring(0,8)}…<br>Type: ${e.name}</span>`;
     } finally {
       btn.disabled = false;
       btn.textContent = 'Verbinden';
@@ -827,8 +832,26 @@
       const yaml = jsyaml.load(match[1]);
       const body = match[2].trim();
 
+      // Normalize field names: map old names to new ones
+      const fieldMap = {
+        'rolle': 'zielgruppe_rolle',
+        'typ': 'loesung_typ',
+        'tools': 'loesung_tools',
+        'komplexitaet': 'loesung_komplexitaet',
+      };
+      for (const [oldName, newName] of Object.entries(fieldMap)) {
+        if (yaml[oldName] && !yaml[newName]) {
+          yaml[newName] = yaml[oldName];
+        }
+      }
+
+      // Normalize complexity to short label
+      if (yaml.loesung_komplexitaet) {
+        yaml.loesung_komplexitaet = normalizeComplexity(yaml.loesung_komplexitaet);
+      }
+
       // Normalize array fields (handle comma-separated strings)
-      const arrayFields = ['kategorie', 'zielgruppe_rolle', 'rolle', 'loesung_typ', 'loesung_tools', 'tools', 'problem_tags', 'oekosystem'];
+      const arrayFields = ['kategorie', 'zielgruppe_rolle', 'rolle', 'loesung_typ', 'typ', 'loesung_tools', 'tools', 'problem_tags', 'oekosystem', 'problem_kontext'];
       for (const field of arrayFields) {
         if (yaml[field] && typeof yaml[field] === 'string') {
           yaml[field] = yaml[field].split(',').map(s => s.trim()).filter(Boolean);
@@ -851,11 +874,7 @@
       // Collect unique values for this field
       const values = new Set();
       for (const uc of useCases) {
-        let val = uc[f.key];
-        // Normalize complexity values to short labels
-        if (f.key === 'loesung_komplexitaet' || f.key === 'komplexitaet') {
-          val = normalizeComplexity(val);
-        }
+        const val = uc[f.key];
         if (Array.isArray(val)) val.forEach(v => values.add(v));
         else if (val) values.add(String(val));
       }
