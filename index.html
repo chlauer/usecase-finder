@@ -238,9 +238,9 @@
     padding: 12px 20px;
     display: flex;
     gap: 8px;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
+    flex-wrap: wrap;
+    position: relative;
+    z-index: 50;
   }
 
   .filters::-webkit-scrollbar { display: none; }
@@ -349,6 +349,8 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
+    position: relative;
+    z-index: 1;
   }
 
   .card {
@@ -747,6 +749,7 @@
         <div class="empty-state">
           <div class="icon">⚠</div>
           <p>Fehler beim Laden: ${e.message}</p>
+          <p style="font-size:0.75rem;margin-top:8px;color:var(--text-muted)">${e.debug || ''}</p>
         </div>`;
     } finally {
       document.getElementById('loading').style.display = 'none';
@@ -759,22 +762,52 @@
 
     // Get file list
     const listRes = await fetch(`https://api.github.com/repos/${repo}/contents/${path}`, { headers });
-    if (!listRes.ok) throw new Error('Ordner nicht gefunden');
+    if (!listRes.ok) {
+      const err = new Error('Ordner nicht gefunden');
+      err.debug = `API antwortete mit ${listRes.status} für Pfad: ${path}`;
+      throw err;
+    }
     const files = await listRes.json();
 
+    // Show what we found
+    const allFiles = files.map(f => f.name);
     const mdFiles = files.filter(f => f.name.endsWith('.md') && f.name !== 'README.md');
 
-    // Fetch each file content via API (works for private repos)
-    const promises = mdFiles.map(async (file) => {
-      const res = await fetch(`https://api.github.com/repos/${repo}/contents/${path}/${file.name}`, {
-        headers: { ...headers, 'Accept': 'application/vnd.github.v3.raw' }
-      });
-      if (!res.ok) return null;
-      const text = await res.text();
-      return parseMarkdown(text, file.name);
-    });
+    if (mdFiles.length === 0) {
+      const err = new Error(`Keine Markdown-Dateien gefunden in /${path}/`);
+      err.debug = `Gefundene Dateien: ${allFiles.join(', ') || 'keine'}`;
+      throw err;
+    }
 
-    useCases = (await Promise.all(promises)).filter(Boolean);
+    // Fetch each file content via API (works for private repos)
+    const results = [];
+    const errors = [];
+    for (const file of mdFiles) {
+      try {
+        const res = await fetch(`https://api.github.com/repos/${repo}/contents/${path}/${file.name}`, {
+          headers: { ...headers, 'Accept': 'application/vnd.github.v3.raw' }
+        });
+        if (!res.ok) {
+          errors.push(`${file.name}: HTTP ${res.status}`);
+          continue;
+        }
+        const text = await res.text();
+        const parsed = parseMarkdown(text, file.name);
+        if (parsed) results.push(parsed);
+        else errors.push(`${file.name}: kein YAML-Frontmatter`);
+      } catch(e) {
+        errors.push(`${file.name}: ${e.message}`);
+      }
+    }
+
+    if (results.length === 0 && errors.length > 0) {
+      const err = new Error(`${mdFiles.length} Dateien gefunden, aber keine konnte gelesen werden`);
+      err.debug = errors.join(' | ');
+      throw err;
+    }
+
+    console.log(`Geladen: ${results.length} Use Cases, Fehler: ${errors.length}`, errors);
+    useCases = results;
   }
 
   function parseMarkdown(text, filename) {
