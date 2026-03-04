@@ -1,0 +1,1080 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Use Case Finder — ready.set.ai</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,500;0,9..40,700;1,9..40,300&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface-hover: #222633;
+    --border: #2a2e3d;
+    --text: #e4e4e7;
+    --text-muted: #8b8fa3;
+    --accent: #6c5ce7;
+    --accent-light: #a29bfe;
+    --green: #00cec9;
+    --orange: #fdcb6e;
+    --red: #fd7979;
+    --tag-bg: #2a2e3d;
+    --radius: 12px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── Setup Screen ── */
+  .setup-screen {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+
+  .setup-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 40px 32px;
+    max-width: 440px;
+    width: 100%;
+  }
+
+  .setup-card h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+
+  .setup-card p {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 28px;
+    line-height: 1.5;
+  }
+
+  .setup-card label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .setup-card input {
+    width: 100%;
+    padding: 12px 16px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    margin-bottom: 20px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .setup-card input:focus {
+    border-color: var(--accent);
+  }
+
+  .setup-card input::placeholder {
+    color: var(--text-muted);
+    opacity: 0.5;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .btn-primary {
+    width: 100%;
+    padding: 14px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+  }
+
+  .btn-primary:hover { background: #5a4bd1; }
+  .btn-primary:active { transform: scale(0.98); }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .setup-error {
+    color: var(--red);
+    font-size: 0.85rem;
+    margin-top: 12px;
+    display: none;
+  }
+
+  .setup-hint {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin-top: 16px;
+    line-height: 1.5;
+    opacity: 0.7;
+  }
+
+  .setup-hint code {
+    font-family: 'JetBrains Mono', monospace;
+    background: var(--bg);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+  }
+
+  /* ── Main App ── */
+  .app { display: none; }
+
+  .app-header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 20px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .app-header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+
+  .app-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .app-title .dot {
+    width: 8px;
+    height: 8px;
+    background: var(--green);
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  .count-badge {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-weight: 400;
+  }
+
+  .btn-settings {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    transition: all 0.2s;
+  }
+
+  .btn-settings:hover {
+    color: var(--text);
+    border-color: var(--text-muted);
+  }
+
+  .search-wrapper {
+    position: relative;
+  }
+
+  .search-icon {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    font-size: 0.9rem;
+  }
+
+  .search-input {
+    width: 100%;
+    padding: 12px 16px 12px 40px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.95rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .search-input:focus {
+    border-color: var(--accent-light);
+  }
+
+  .search-input::placeholder {
+    color: var(--text-muted);
+    opacity: 0.6;
+  }
+
+  /* ── Filters ── */
+  .filters {
+    padding: 12px 20px;
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .filters::-webkit-scrollbar { display: none; }
+
+  .filter-group {
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  .filter-btn {
+    padding: 7px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    color: var(--text-muted);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.8rem;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .filter-btn:hover, .filter-btn.active {
+    border-color: var(--accent);
+    color: var(--text);
+  }
+
+  .filter-btn.active {
+    background: rgba(108, 92, 231, 0.15);
+  }
+
+  .filter-btn .arrow {
+    font-size: 0.6rem;
+    transition: transform 0.2s;
+  }
+
+  .filter-dropdown {
+    display: none;
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 6px;
+    min-width: 180px;
+    z-index: 200;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    max-height: 260px;
+    overflow-y: auto;
+  }
+
+  .filter-dropdown.show { display: block; }
+
+  .filter-option {
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition: background 0.15s;
+    color: var(--text-muted);
+  }
+
+  .filter-option:hover {
+    background: var(--surface-hover);
+    color: var(--text);
+  }
+
+  .filter-option.selected {
+    background: rgba(108, 92, 231, 0.15);
+    color: var(--accent-light);
+  }
+
+  .active-filters {
+    padding: 0 20px 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .active-filter-tag {
+    padding: 4px 10px;
+    background: rgba(108, 92, 231, 0.15);
+    border: 1px solid rgba(108, 92, 231, 0.3);
+    border-radius: 14px;
+    font-size: 0.73rem;
+    color: var(--accent-light);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+  }
+
+  .active-filter-tag:hover {
+    background: rgba(108, 92, 231, 0.25);
+  }
+
+  .active-filter-tag .remove { font-size: 0.9rem; }
+
+  /* ── Cards ── */
+  .cards {
+    padding: 8px 16px 100px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .card:hover {
+    border-color: var(--accent);
+    transform: translateY(-1px);
+  }
+
+  .card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+
+  .card-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    line-height: 1.35;
+  }
+
+  .card-complexity {
+    flex-shrink: 0;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  .complexity-sofort { background: rgba(0, 206, 201, 0.15); color: var(--green); }
+  .complexity-einfach { background: rgba(0, 206, 201, 0.1); color: #55efc4; }
+  .complexity-mittel { background: rgba(253, 203, 110, 0.15); color: var(--orange); }
+  .complexity-fortgeschritten { background: rgba(253, 121, 121, 0.15); color: var(--red); }
+
+  .card-description {
+    font-size: 0.84rem;
+    color: var(--text-muted);
+    line-height: 1.5;
+    margin-bottom: 12px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .card-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+
+  .tag {
+    padding: 3px 9px;
+    background: var(--tag-bg);
+    border-radius: 10px;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+  }
+
+  .tag-rolle { background: rgba(108, 92, 231, 0.12); color: var(--accent-light); }
+  .tag-typ { background: rgba(0, 206, 201, 0.1); color: var(--green); }
+
+  /* ── Detail Modal ── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 500;
+    padding: 20px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .modal-overlay.show { display: flex; }
+
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    width: 100%;
+    max-width: 600px;
+    margin: auto;
+    padding: 28px 24px;
+    position: relative;
+  }
+
+  .modal-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal-close:hover { color: var(--text); }
+
+  .modal h2 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin-bottom: 6px;
+    padding-right: 40px;
+  }
+
+  .modal-id {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-bottom: 20px;
+  }
+
+  .modal-section {
+    margin-bottom: 20px;
+  }
+
+  .modal-section-label {
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 6px;
+  }
+
+  .modal-section-content {
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: var(--text);
+  }
+
+  .modal-section-content.mono {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    background: var(--bg);
+    padding: 14px;
+    border-radius: 8px;
+    white-space: pre-wrap;
+    max-height: 300px;
+    overflow-y: auto;
+  }
+
+  .modal-meta {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .meta-item {
+    background: var(--bg);
+    padding: 10px 14px;
+    border-radius: 8px;
+  }
+
+  .meta-label {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 4px;
+  }
+
+  .meta-value {
+    font-size: 0.85rem;
+    font-weight: 500;
+  }
+
+  .modal-divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 20px 0;
+  }
+
+  /* ── Loading & Empty ── */
+  .loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 80px 20px;
+    color: var(--text-muted);
+    gap: 16px;
+  }
+
+  .spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-muted);
+  }
+
+  .empty-state .icon { font-size: 2rem; margin-bottom: 12px; }
+  .empty-state p { font-size: 0.9rem; }
+
+  /* ── Responsive ── */
+  @media (min-width: 640px) {
+    .cards {
+      padding: 16px 24px 100px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .app-header { padding: 16px 24px; }
+    .filters { padding: 12px 24px; }
+    .active-filters { padding: 0 24px 10px; }
+  }
+
+  @media (min-width: 960px) {
+    .cards { grid-template-columns: 1fr 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══ Setup Screen ═══ -->
+<div class="setup-screen" id="setupScreen">
+  <div class="setup-card">
+    <h1>Use Case Finder</h1>
+    <p>Verbinde dein privates GitHub-Repo, um deine Use Cases zu durchsuchen und zu filtern.</p>
+
+    <label for="repoInput">Repository (owner/name)</label>
+    <input type="text" id="repoInput" placeholder="z.B. ready-set-ai/use-case-database" />
+
+    <label for="pathInput">Ordner-Pfad</label>
+    <input type="text" id="pathInput" value="use-cases" placeholder="z.B. use-cases" />
+
+    <label for="tokenInput">Personal Access Token</label>
+    <input type="password" id="tokenInput" placeholder="ghp_xxxxxxxxxxxx" />
+
+    <button class="btn-primary" id="connectBtn" onclick="connect()">Verbinden</button>
+    <div class="setup-error" id="setupError"></div>
+
+    <div class="setup-hint">
+      Token erstellen: GitHub → Settings → Developer Settings → Personal Access Tokens → Fine-grained tokens → Repo-Zugriff (Contents: Read)
+    </div>
+  </div>
+</div>
+
+<!-- ═══ Main App ═══ -->
+<div class="app" id="app">
+  <header class="app-header">
+    <div class="app-header-top">
+      <div class="app-title">
+        <span class="dot"></span>
+        Use Case Finder
+        <span class="count-badge" id="countBadge"></span>
+      </div>
+      <button class="btn-settings" onclick="disconnect()">⚙ Repo</button>
+    </div>
+    <div class="search-wrapper">
+      <span class="search-icon">⌕</span>
+      <input type="text" class="search-input" id="searchInput" placeholder="Suche nach Titel, Problem, Lösung…" oninput="applyFilters()" />
+    </div>
+  </header>
+
+  <div class="filters" id="filtersBar"></div>
+  <div class="active-filters" id="activeFilters"></div>
+
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <span>Lade Use Cases…</span>
+  </div>
+
+  <div class="cards" id="cardsContainer"></div>
+</div>
+
+<!-- ═══ Detail Modal ═══ -->
+<div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal" id="modalContent"></div>
+</div>
+
+<script>
+  // ── State ──
+  let useCases = [];
+  let activeFilters = {}; // { fieldName: selectedValue }
+  let config = {};
+
+  // Filter definitions: which fields to show as filter buttons
+  const FILTER_FIELDS = [
+    { key: 'zielgruppe_rolle', label: 'Rolle' },
+    { key: 'kategorie', label: 'Kategorie' },
+    { key: 'loesung_typ', label: 'Typ' },
+    { key: 'loesung_komplexitaet', label: 'Komplexität' },
+    { key: 'loesung_tools', label: 'Tools' },
+    { key: 'oekosystem', label: 'Ökosystem' },
+    { key: 'problem_kontext', label: 'Kontext' },
+    { key: 'status', label: 'Status' },
+  ];
+
+  // ── Setup / Connect ──
+  function loadConfig() {
+    try {
+      const saved = localStorage.getItem('ucfinder_config');
+      if (saved) {
+        config = JSON.parse(saved);
+        return true;
+      }
+    } catch(e) {}
+    return false;
+  }
+
+  function saveConfig() {
+    localStorage.setItem('ucfinder_config', JSON.stringify(config));
+  }
+
+  async function connect() {
+    const repo = document.getElementById('repoInput').value.trim();
+    const path = document.getElementById('pathInput').value.trim();
+    const token = document.getElementById('tokenInput').value.trim();
+    const errEl = document.getElementById('setupError');
+    const btn = document.getElementById('connectBtn');
+
+    if (!repo || !token) {
+      errEl.textContent = 'Bitte Repo und Token eingeben.';
+      errEl.style.display = 'block';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Verbinde…';
+    errEl.style.display = 'none';
+
+    try {
+      // Test connection
+      const res = await fetch(`https://api.github.com/repos/${repo}/contents/${path}`, {
+        headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github.v3+json' }
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || `HTTP ${res.status}`);
+      }
+
+      config = { repo, path, token };
+      saveConfig();
+      showApp();
+    } catch(e) {
+      errEl.textContent = `Fehler: ${e.message}`;
+      errEl.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Verbinden';
+    }
+  }
+
+  function disconnect() {
+    localStorage.removeItem('ucfinder_config');
+    config = {};
+    document.getElementById('app').style.display = 'none';
+    document.getElementById('setupScreen').style.display = 'flex';
+  }
+
+  // ── Load Data ──
+  async function showApp() {
+    document.getElementById('setupScreen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    document.getElementById('loading').style.display = 'flex';
+    document.getElementById('cardsContainer').innerHTML = '';
+
+    try {
+      await loadUseCases();
+      buildFilters();
+      applyFilters();
+    } catch(e) {
+      document.getElementById('cardsContainer').innerHTML = `
+        <div class="empty-state">
+          <div class="icon">⚠</div>
+          <p>Fehler beim Laden: ${e.message}</p>
+        </div>`;
+    } finally {
+      document.getElementById('loading').style.display = 'none';
+    }
+  }
+
+  async function loadUseCases() {
+    const { repo, path, token } = config;
+    const headers = { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github.v3+json' };
+
+    // Get file list
+    const listRes = await fetch(`https://api.github.com/repos/${repo}/contents/${path}`, { headers });
+    if (!listRes.ok) throw new Error('Ordner nicht gefunden');
+    const files = await listRes.json();
+
+    const mdFiles = files.filter(f => f.name.endsWith('.md') && f.name !== 'README.md');
+
+    // Fetch each file content
+    const promises = mdFiles.map(async (file) => {
+      const res = await fetch(file.download_url, { headers });
+      const text = await res.text();
+      return parseMarkdown(text, file.name);
+    });
+
+    useCases = (await Promise.all(promises)).filter(Boolean);
+  }
+
+  function parseMarkdown(text, filename) {
+    // Extract YAML frontmatter
+    const match = text.match(/^---\s*\n([\s\S]*?)\n---\s*\n([\s\S]*)$/);
+    if (!match) return null;
+
+    try {
+      const yaml = jsyaml.load(match[1]);
+      const body = match[2].trim();
+
+      // Normalize array fields (handle comma-separated strings)
+      const arrayFields = ['kategorie', 'zielgruppe_rolle', 'rolle', 'loesung_typ', 'loesung_tools', 'tools', 'problem_tags', 'oekosystem'];
+      for (const field of arrayFields) {
+        if (yaml[field] && typeof yaml[field] === 'string') {
+          yaml[field] = yaml[field].split(',').map(s => s.trim()).filter(Boolean);
+        }
+      }
+
+      return { ...yaml, _body: body, _filename: filename };
+    } catch(e) {
+      console.warn(`YAML parse error in ${filename}:`, e);
+      return null;
+    }
+  }
+
+  // ── Filters ──
+  function buildFilters() {
+    const bar = document.getElementById('filtersBar');
+    bar.innerHTML = '';
+
+    for (const f of FILTER_FIELDS) {
+      // Collect unique values for this field
+      const values = new Set();
+      for (const uc of useCases) {
+        const val = uc[f.key];
+        if (Array.isArray(val)) val.forEach(v => values.add(v));
+        else if (val) values.add(String(val));
+      }
+
+      if (values.size === 0) continue;
+
+      const sorted = [...values].sort();
+      const group = document.createElement('div');
+      group.className = 'filter-group';
+
+      const btn = document.createElement('button');
+      btn.className = 'filter-btn';
+      btn.setAttribute('data-field', f.key);
+      btn.innerHTML = `${f.label} <span class="arrow">▾</span>`;
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        toggleDropdown(f.key);
+      };
+
+      const dropdown = document.createElement('div');
+      dropdown.className = 'filter-dropdown';
+      dropdown.id = `dropdown-${f.key}`;
+
+      for (const val of sorted) {
+        const opt = document.createElement('div');
+        opt.className = 'filter-option';
+        opt.textContent = val;
+        opt.onclick = (e) => {
+          e.stopPropagation();
+          toggleFilterValue(f.key, val);
+        };
+        dropdown.appendChild(opt);
+      }
+
+      group.appendChild(btn);
+      group.appendChild(dropdown);
+      bar.appendChild(group);
+    }
+
+    // Close dropdowns on outside click
+    document.addEventListener('click', () => {
+      document.querySelectorAll('.filter-dropdown').forEach(d => d.classList.remove('show'));
+    });
+  }
+
+  function toggleDropdown(field) {
+    const dd = document.getElementById(`dropdown-${field}`);
+    const wasOpen = dd.classList.contains('show');
+    document.querySelectorAll('.filter-dropdown').forEach(d => d.classList.remove('show'));
+    if (!wasOpen) dd.classList.add('show');
+  }
+
+  function toggleFilterValue(field, value) {
+    if (activeFilters[field] === value) {
+      delete activeFilters[field];
+    } else {
+      activeFilters[field] = value;
+    }
+    updateFilterUI();
+    applyFilters();
+  }
+
+  function removeFilter(field) {
+    delete activeFilters[field];
+    updateFilterUI();
+    applyFilters();
+  }
+
+  function updateFilterUI() {
+    // Update filter buttons
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+      const field = btn.getAttribute('data-field');
+      btn.classList.toggle('active', field in activeFilters);
+    });
+
+    // Update dropdown selections
+    document.querySelectorAll('.filter-dropdown').forEach(dd => {
+      const field = dd.id.replace('dropdown-', '');
+      dd.querySelectorAll('.filter-option').forEach(opt => {
+        opt.classList.toggle('selected', activeFilters[field] === opt.textContent);
+      });
+    });
+
+    // Show active filter tags
+    const container = document.getElementById('activeFilters');
+    container.innerHTML = '';
+    for (const [field, value] of Object.entries(activeFilters)) {
+      const label = FILTER_FIELDS.find(f => f.key === field)?.label || field;
+      const tag = document.createElement('div');
+      tag.className = 'active-filter-tag';
+      tag.innerHTML = `${label}: ${value} <span class="remove">×</span>`;
+      tag.onclick = () => removeFilter(field);
+      container.appendChild(tag);
+    }
+  }
+
+  // ── Search & Filter Logic ──
+  function applyFilters() {
+    const query = document.getElementById('searchInput').value.toLowerCase().trim();
+
+    const filtered = useCases.filter(uc => {
+      // Text search across multiple fields
+      if (query) {
+        const searchable = [
+          uc.titel || uc.title || '',
+          uc.problem_beschreibung || '',
+          uc.problem_kontext || '',
+          uc.situation_vorher || '',
+          uc.situation_nachher || '',
+          uc._body || '',
+          ...(Array.isArray(uc.kategorie) ? uc.kategorie : [uc.kategorie || '']),
+          ...(Array.isArray(uc.zielgruppe_rolle || uc.rolle) ? (uc.zielgruppe_rolle || uc.rolle) : [uc.zielgruppe_rolle || uc.rolle || '']),
+        ].join(' ').toLowerCase();
+
+        if (!searchable.includes(query)) return false;
+      }
+
+      // Apply active filters
+      for (const [field, value] of Object.entries(activeFilters)) {
+        const ucVal = uc[field];
+        if (Array.isArray(ucVal)) {
+          if (!ucVal.includes(value)) return false;
+        } else {
+          if (String(ucVal || '') !== value) return false;
+        }
+      }
+
+      return true;
+    });
+
+    renderCards(filtered);
+  }
+
+  // ── Render ──
+  function renderCards(items) {
+    const container = document.getElementById('cardsContainer');
+    const badge = document.getElementById('countBadge');
+    badge.textContent = `${items.length} von ${useCases.length}`;
+
+    if (items.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state" style="grid-column: 1/-1">
+          <div class="icon">🔍</div>
+          <p>Keine Use Cases gefunden.</p>
+        </div>`;
+      return;
+    }
+
+    container.innerHTML = items.map((uc, i) => {
+      const title = uc.titel || uc.title || uc._filename;
+      const complexity = uc.loesung_komplexitaet || uc.komplexitaet || '';
+      const desc = uc.problem_beschreibung || '';
+      const rollen = Array.isArray(uc.zielgruppe_rolle || uc.rolle) ? (uc.zielgruppe_rolle || uc.rolle) : [];
+      const typ = uc.loesung_typ || uc.typ || '';
+      const kategorie = Array.isArray(uc.kategorie) ? uc.kategorie : (uc.kategorie ? [uc.kategorie] : []);
+
+      return `
+        <div class="card" onclick="showDetail(${i})">
+          <div class="card-header">
+            <div class="card-title">${escHtml(title)}</div>
+            ${complexity ? `<span class="card-complexity complexity-${complexity}">${complexity}</span>` : ''}
+          </div>
+          ${desc ? `<div class="card-description">${escHtml(desc)}</div>` : ''}
+          <div class="card-tags">
+            ${rollen.map(r => `<span class="tag tag-rolle">${escHtml(r)}</span>`).join('')}
+            ${typ ? `<span class="tag tag-typ">${escHtml(Array.isArray(typ) ? typ.join(', ') : typ)}</span>` : ''}
+            ${kategorie.map(k => `<span class="tag">${escHtml(k)}</span>`).join('')}
+          </div>
+        </div>`;
+    }).join('');
+
+    // Store filtered list for detail view
+    window._filteredItems = items;
+  }
+
+  function showDetail(index) {
+    const uc = window._filteredItems[index];
+    if (!uc) return;
+
+    const title = uc.titel || uc.title || '';
+    const id = uc.id || '';
+
+    const fields = [
+      ['Problem', uc.problem_beschreibung],
+      ['Kontext', Array.isArray(uc.problem_kontext) ? uc.problem_kontext.join(', ') : uc.problem_kontext],
+      ['Vorher', uc.situation_vorher],
+      ['Nachher', uc.situation_nachher],
+      ['No-Gos', uc.no_gos],
+    ];
+
+    const modal = document.getElementById('modalContent');
+    modal.innerHTML = `
+      <button class="modal-close" onclick="closeModal()">×</button>
+      <h2>${escHtml(title)}</h2>
+      <div class="modal-id">${escHtml(id)} · ${escHtml(uc.status || '')}</div>
+
+      <div class="modal-meta">
+        ${metaItem('Typ', Array.isArray(uc.loesung_typ) ? uc.loesung_typ.join(', ') : uc.loesung_typ)}
+        ${metaItem('Komplexität', uc.loesung_komplexitaet || uc.komplexitaet)}
+        ${metaItem('Tools', Array.isArray(uc.loesung_tools || uc.tools) ? (uc.loesung_tools || uc.tools).join(', ') : (uc.loesung_tools || uc.tools))}
+        ${metaItem('Ökosystem', Array.isArray(uc.oekosystem) ? uc.oekosystem.join(', ') : uc.oekosystem)}
+        ${metaItem('Dauer', uc.aufgabe_dauer ? uc.aufgabe_dauer + ' Min.' : '')}
+        ${metaItem('Rhythmus', uc.aufgabe_rhythmus)}
+        ${metaItem('Daten', uc.daten_voraussetzung)}
+        ${metaItem('Rolle', Array.isArray(uc.zielgruppe_rolle || uc.rolle) ? (uc.zielgruppe_rolle || uc.rolle).join(', ') : (uc.zielgruppe_rolle || uc.rolle))}
+      </div>
+
+      <hr class="modal-divider">
+
+      ${fields.filter(([,v]) => v).map(([label, value]) => `
+        <div class="modal-section">
+          <div class="modal-section-label">${label}</div>
+          <div class="modal-section-content">${escHtml(value)}</div>
+        </div>
+      `).join('')}
+
+      ${uc.loesung_ki_artefakt ? `
+        <hr class="modal-divider">
+        <div class="modal-section">
+          <div class="modal-section-label">KI-Artefakt / Prompt</div>
+          <div class="modal-section-content mono">${escHtml(uc.loesung_ki_artefakt)}</div>
+        </div>
+      ` : ''}
+
+      ${uc.loesung_anleitung || uc.ki_anleitung_installation ? `
+        <div class="modal-section">
+          <div class="modal-section-label">Anleitung</div>
+          <div class="modal-section-content">${escHtml(uc.loesung_anleitung || uc.ki_anleitung_installation)}</div>
+        </div>
+      ` : ''}
+    `;
+
+    document.getElementById('modalOverlay').classList.add('show');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeModal() {
+    document.getElementById('modalOverlay').classList.remove('show');
+    document.body.style.overflow = '';
+  }
+
+  function metaItem(label, value) {
+    if (!value) return '';
+    return `<div class="meta-item"><div class="meta-label">${label}</div><div class="meta-value">${escHtml(value)}</div></div>`;
+  }
+
+  function escHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  // ── Keyboard shortcut ──
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeModal();
+    if (e.key === '/' && !e.ctrlKey && !e.metaKey) {
+      const search = document.getElementById('searchInput');
+      if (document.activeElement !== search) {
+        e.preventDefault();
+        search.focus();
+      }
+    }
+  });
+
+  // ── Init ──
+  if (loadConfig()) {
+    showApp();
+  }
+</script>
+</body>
+</html>
