@@ -673,8 +673,11 @@
     { key: 'loesung_typ', label: 'Typ' },
     { key: 'loesung_komplexitaet', label: 'Komplexität' },
     { key: 'loesung_tools', label: 'Tools' },
-    { key: 'oekosystem', label: 'Ökosystem' },
+    { key: 'loesung_oekosystem', label: 'Ökosystem' },
     { key: 'problem_kontext', label: 'Kontext' },
+    { key: 'loesung_datenschutz_level', label: 'Datenschutz' },
+    { key: 'loesung_prompt_sprache', label: 'Sprache' },
+    { key: 'loesung_anpassungsbedarf', label: 'Anpassung' },
     { key: 'status', label: 'Status' },
   ];
 
@@ -838,6 +841,7 @@
         'typ': 'loesung_typ',
         'tools': 'loesung_tools',
         'komplexitaet': 'loesung_komplexitaet',
+        'oekosystem': 'loesung_oekosystem',
       };
       for (const [oldName, newName] of Object.entries(fieldMap)) {
         if (yaml[oldName] && !yaml[newName]) {
@@ -850,11 +854,51 @@
         yaml.loesung_komplexitaet = normalizeComplexity(yaml.loesung_komplexitaet);
       }
 
+      // Normalize status to lowercase
+      if (yaml.status) {
+        yaml.status = String(yaml.status).toLowerCase().trim();
+      }
+
       // Normalize array fields (handle comma-separated strings)
-      const arrayFields = ['kategorie', 'zielgruppe_rolle', 'rolle', 'loesung_typ', 'typ', 'loesung_tools', 'tools', 'problem_tags', 'oekosystem', 'problem_kontext'];
+      const arrayFields = ['kategorie', 'zielgruppe_rolle', 'rolle', 'loesung_typ', 'typ', 'loesung_tools', 'tools', 'problem_tags', 'loesung_oekosystem', 'oekosystem', 'problem_kontext'];
       for (const field of arrayFields) {
         if (yaml[field] && typeof yaml[field] === 'string') {
           yaml[field] = yaml[field].split(',').map(s => s.trim()).filter(Boolean);
+        }
+      }
+
+      // Extract sections from markdown body
+      const sections = {};
+      const sectionPattern = /^##\s+(.+)$/gm;
+      let sectionMatch;
+      const sectionPositions = [];
+      while ((sectionMatch = sectionPattern.exec(body)) !== null) {
+        sectionPositions.push({ title: sectionMatch[1].trim(), start: sectionMatch.index + sectionMatch[0].length });
+      }
+      for (let i = 0; i < sectionPositions.length; i++) {
+        const end = i + 1 < sectionPositions.length ? sectionPositions[i + 1].start - sectionPositions[i + 1].title.length - 3 : body.length;
+        const content = body.substring(sectionPositions[i].start, end).trim();
+        if (content) {
+          const key = sectionPositions[i].title.toLowerCase()
+            .replace(/ä/g,'ae').replace(/ö/g,'oe').replace(/ü/g,'ue').replace(/ß/g,'ss')
+            .replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+          sections[key] = content;
+        }
+      }
+
+      // Map body sections to expected field names (if not already in YAML)
+      const bodyMap = {
+        'problembeschreibung': 'problem_beschreibung',
+        'problemkontext': 'problem_kontext_text',
+        'no_gos': 'no_gos',
+        'situation_vorher': 'situation_vorher',
+        'situation_nachher': 'situation_nachher',
+        'ki_loesung': 'loesung_ki_artefakt',
+        'anleitung': 'loesung_anleitung',
+      };
+      for (const [bodyKey, yamlKey] of Object.entries(bodyMap)) {
+        if (sections[bodyKey] && !yaml[yamlKey]) {
+          yaml[yamlKey] = sections[bodyKey];
         }
       }
 
@@ -987,6 +1031,9 @@
           uc._body || '',
           ...(Array.isArray(uc.kategorie) ? uc.kategorie : [uc.kategorie || '']),
           ...(Array.isArray(uc.zielgruppe_rolle || uc.rolle) ? (uc.zielgruppe_rolle || uc.rolle) : [uc.zielgruppe_rolle || uc.rolle || '']),
+          ...(Array.isArray(uc.loesung_tools || uc.tools) ? (uc.loesung_tools || uc.tools) : [uc.loesung_tools || uc.tools || '']),
+          ...(Array.isArray(uc.loesung_oekosystem || uc.oekosystem) ? (uc.loesung_oekosystem || uc.oekosystem) : [uc.loesung_oekosystem || uc.oekosystem || '']),
+          ...(Array.isArray(uc.loesung_typ) ? uc.loesung_typ : [uc.loesung_typ || '']),
         ].join(' ').toLowerCase();
 
         if (!searchable.includes(query)) return false;
@@ -1079,11 +1126,15 @@
         ${metaItem('Typ', Array.isArray(uc.loesung_typ) ? uc.loesung_typ.join(', ') : uc.loesung_typ)}
         ${metaItem('Komplexität', normalizeComplexity(uc.loesung_komplexitaet || uc.komplexitaet))}
         ${metaItem('Tools', Array.isArray(uc.loesung_tools || uc.tools) ? (uc.loesung_tools || uc.tools).join(', ') : (uc.loesung_tools || uc.tools))}
-        ${metaItem('Ökosystem', Array.isArray(uc.oekosystem) ? uc.oekosystem.join(', ') : uc.oekosystem)}
+        ${metaItem('Ökosystem', Array.isArray(uc.loesung_oekosystem || uc.oekosystem) ? (uc.loesung_oekosystem || uc.oekosystem).join(', ') : (uc.loesung_oekosystem || uc.oekosystem))}
         ${metaItem('Dauer', uc.aufgabe_dauer ? uc.aufgabe_dauer + ' Min.' : '')}
         ${metaItem('Rhythmus', uc.aufgabe_rhythmus)}
-        ${metaItem('Daten', uc.daten_voraussetzung)}
+        ${metaItem('Daten', uc.loesung_daten_voraussetzung || uc.daten_voraussetzung)}
         ${metaItem('Rolle', Array.isArray(uc.zielgruppe_rolle || uc.rolle) ? (uc.zielgruppe_rolle || uc.rolle).join(', ') : (uc.zielgruppe_rolle || uc.rolle))}
+        ${metaItem('Datenschutz', uc.loesung_datenschutz_level)}
+        ${metaItem('Sprache', uc.loesung_prompt_sprache)}
+        ${metaItem('Anpassung', uc.loesung_anpassungsbedarf)}
+        ${metaItem('Output', uc.loesung_output_format)}
       </div>
 
       <hr class="modal-divider">
