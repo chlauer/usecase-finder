@@ -1152,13 +1152,24 @@
         </div>
       ` : ''}
 
-      ${uc._body ? `
-        <hr class="modal-divider">
-        <div class="modal-section">
-          <div class="modal-section-label">Vollständiger Inhalt</div>
-          <div class="modal-section-content body-content">${renderMarkdown(uc._body)}</div>
-        </div>
-      ` : ''}
+      ${(() => {
+        // Strip already-displayed sections from body to avoid duplication
+        const knownHeadings = ['Problembeschreibung', 'Problemkontext', 'No-Gos', 'Situation vorher', 'Situation nachher', 'KI-Lösung', 'Anleitung'];
+        let remaining = (uc._body || '');
+        // Remove the H1 title line
+        remaining = remaining.replace(/^#\s+.+\n?/, '');
+        // Remove known ## sections
+        for (const h of knownHeadings) {
+          remaining = remaining.replace(new RegExp('##\\s+' + h.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*\\n[\\s\\S]*?(?=\\n##\\s|$)'), '');
+        }
+        remaining = remaining.trim();
+        return remaining ? `
+          <hr class="modal-divider">
+          <div class="modal-section">
+            <div class="modal-section-label">Weiterer Inhalt</div>
+            <div class="modal-section-content body-content">${renderMarkdown(remaining)}</div>
+          </div>` : '';
+      })()}
     `;
 
     document.getElementById('modalOverlay').classList.add('show');
