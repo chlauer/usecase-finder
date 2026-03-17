@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Use Case Finder _MEDIATE</title>
+<title>Use-Case-Finder _MEDIATE — ready.set.ai</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,500;0,9..40,700;1,9..40,300&family=JetBrains+Mono:wght@400;500&display=swap');
@@ -424,6 +424,124 @@
   .tag-rolle { background: rgba(108, 92, 231, 0.12); color: var(--accent-light); }
   .tag-typ { background: rgba(0, 206, 201, 0.1); color: var(--green); }
 
+  /* ── View Toggle ── */
+  .view-toggle {
+    display: flex;
+    gap: 2px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 2px;
+  }
+
+  .view-toggle-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    padding: 5px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-family: 'DM Sans', sans-serif;
+    transition: all 0.2s;
+    line-height: 1;
+  }
+
+  .view-toggle-btn:hover { color: var(--text); }
+  .view-toggle-btn.active {
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* ── List View ── */
+  .cards.list-view {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  .list-row {
+    display: grid;
+    grid-template-columns: 1fr auto auto auto;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: var(--surface);
+    cursor: pointer;
+    transition: background 0.15s;
+    font-size: 0.85rem;
+  }
+
+  .list-row:hover { background: var(--surface-hover); }
+
+  .list-row-header {
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    cursor: default;
+    padding: 10px 16px 8px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .list-row-header:hover { background: var(--bg); }
+
+  .list-title {
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .list-status {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    padding: 3px 8px;
+    border-radius: 10px;
+    white-space: nowrap;
+  }
+
+  .list-status-entwurf { background: rgba(253, 203, 110, 0.15); color: var(--orange); }
+  .list-status-review { background: rgba(108, 92, 231, 0.15); color: var(--accent-light); }
+  .list-status-live { background: rgba(0, 206, 201, 0.15); color: var(--green); }
+  .list-status-rohnotiz { background: rgba(253, 121, 121, 0.1); color: var(--red); }
+
+  .list-meta {
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    white-space: nowrap;
+  }
+
+  .list-tags {
+    display: flex;
+    gap: 4px;
+    flex-wrap: nowrap;
+    overflow: hidden;
+  }
+
+  .list-tags .tag { font-size: 0.65rem; padding: 2px 7px; }
+
+  @media (max-width: 640px) {
+    .list-row {
+      grid-template-columns: 1fr auto;
+      gap: 6px;
+    }
+    .list-meta, .list-tags { display: none; }
+  }
+
   /* ── Detail Modal ── */
   .modal-overlay {
     display: none;
@@ -584,11 +702,15 @@
 
   /* ── Responsive ── */
   @media (min-width: 640px) {
-    .cards {
+    .cards:not(.list-view) {
       padding: 16px 24px 100px;
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 12px;
+    }
+
+    .cards.list-view {
+      margin: 8px 24px 100px;
     }
 
     .app-header { padding: 16px 24px; }
@@ -597,7 +719,7 @@
   }
 
   @media (min-width: 960px) {
-    .cards { grid-template-columns: 1fr 1fr 1fr; }
+    .cards:not(.list-view) { grid-template-columns: 1fr 1fr 1fr; }
   }
 </style>
 </head>
@@ -636,7 +758,13 @@
         Use-Case-Finder _MEDIATE
         <span class="count-badge" id="countBadge"></span>
       </div>
-      <button class="btn-settings" onclick="disconnect()">⚙ Repo</button>
+      <div class="header-actions">
+        <div class="view-toggle">
+          <button class="view-toggle-btn active" id="btnCardView" onclick="setView('cards')" title="Kachelansicht">▦</button>
+          <button class="view-toggle-btn" id="btnListView" onclick="setView('list')" title="Listenansicht">☰</button>
+        </div>
+        <button class="btn-settings" onclick="disconnect()">⚙ Repo</button>
+      </div>
     </div>
     <div class="search-wrapper">
       <span class="search-icon">⌕</span>
@@ -665,6 +793,7 @@
   let useCases = [];
   let activeFilters = {}; // { fieldName: selectedValue }
   let config = {};
+  let viewMode = 'cards'; // 'cards' or 'list'
 
   // Filter definitions: which fields to show as filter buttons
   const FILTER_FIELDS = [
@@ -1051,11 +1180,22 @@
     renderCards(filtered);
   }
 
+  // ── View Toggle ──
+  function setView(mode) {
+    viewMode = mode;
+    document.getElementById('btnCardView').classList.toggle('active', mode === 'cards');
+    document.getElementById('btnListView').classList.toggle('active', mode === 'list');
+    applyFilters();
+  }
+
   // ── Render ──
   function renderCards(items) {
     const container = document.getElementById('cardsContainer');
     const badge = document.getElementById('countBadge');
     badge.textContent = `${items.length} von ${useCases.length}`;
+
+    // Toggle container class
+    container.classList.toggle('list-view', viewMode === 'list');
 
     if (items.length === 0) {
       container.innerHTML = `
@@ -1066,28 +1206,53 @@
       return;
     }
 
-    container.innerHTML = items.map((uc, i) => {
-      const title = uc.titel || uc.title || uc._filename;
-      const complexity = normalizeComplexity(uc.loesung_komplexitaet || uc.komplexitaet);
-      const desc = uc.problem_beschreibung || '';
-      const rollen = Array.isArray(uc.zielgruppe_rolle || uc.rolle) ? (uc.zielgruppe_rolle || uc.rolle) : [];
-      const typ = uc.loesung_typ || uc.typ || '';
-      const kategorie = Array.isArray(uc.kategorie) ? uc.kategorie : (uc.kategorie ? [uc.kategorie] : []);
+    if (viewMode === 'list') {
+      container.innerHTML = `
+        <div class="list-row list-row-header">
+          <span>Titel</span>
+          <span>Typ</span>
+          <span>Komplexität</span>
+          <span>Status</span>
+        </div>` +
+        items.map((uc, i) => {
+          const title = uc.titel || uc.title || uc._filename;
+          const complexity = normalizeComplexity(uc.loesung_komplexitaet || uc.komplexitaet);
+          const status = uc.status || '';
+          const typ = uc.loesung_typ || uc.typ || '';
+          const typStr = Array.isArray(typ) ? typ.join(', ') : typ;
 
-      return `
-        <div class="card" onclick="showDetail(${i})">
-          <div class="card-header">
-            <div class="card-title">${escHtml(title)}</div>
-            ${complexity ? `<span class="card-complexity complexity-${complexity}">${complexity}</span>` : ''}
-          </div>
-          ${desc ? `<div class="card-description">${escHtml(desc)}</div>` : ''}
-          <div class="card-tags">
-            ${rollen.map(r => `<span class="tag tag-rolle">${escHtml(r)}</span>`).join('')}
-            ${typ ? `<span class="tag tag-typ">${escHtml(Array.isArray(typ) ? typ.join(', ') : typ)}</span>` : ''}
-            ${kategorie.map(k => `<span class="tag">${escHtml(k)}</span>`).join('')}
-          </div>
-        </div>`;
-    }).join('');
+          return `
+            <div class="list-row" onclick="showDetail(${i})">
+              <span class="list-title">${escHtml(title)}</span>
+              <span class="list-meta">${escHtml(typStr)}</span>
+              ${complexity ? `<span class="card-complexity complexity-${complexity}" style="font-size:0.68rem">${complexity}</span>` : '<span></span>'}
+              <span class="list-status list-status-${status}">${escHtml(status)}</span>
+            </div>`;
+        }).join('');
+    } else {
+      container.innerHTML = items.map((uc, i) => {
+        const title = uc.titel || uc.title || uc._filename;
+        const complexity = normalizeComplexity(uc.loesung_komplexitaet || uc.komplexitaet);
+        const desc = uc.problem_beschreibung || '';
+        const rollen = Array.isArray(uc.zielgruppe_rolle || uc.rolle) ? (uc.zielgruppe_rolle || uc.rolle) : [];
+        const typ = uc.loesung_typ || uc.typ || '';
+        const kategorie = Array.isArray(uc.kategorie) ? uc.kategorie : (uc.kategorie ? [uc.kategorie] : []);
+
+        return `
+          <div class="card" onclick="showDetail(${i})">
+            <div class="card-header">
+              <div class="card-title">${escHtml(title)}</div>
+              ${complexity ? `<span class="card-complexity complexity-${complexity}">${complexity}</span>` : ''}
+            </div>
+            ${desc ? `<div class="card-description">${escHtml(desc)}</div>` : ''}
+            <div class="card-tags">
+              ${rollen.map(r => `<span class="tag tag-rolle">${escHtml(r)}</span>`).join('')}
+              ${typ ? `<span class="tag tag-typ">${escHtml(Array.isArray(typ) ? typ.join(', ') : typ)}</span>` : ''}
+              ${kategorie.map(k => `<span class="tag">${escHtml(k)}</span>`).join('')}
+            </div>
+          </div>`;
+      }).join('');
+    }
 
     // Store filtered list for detail view
     window._filteredItems = items;
