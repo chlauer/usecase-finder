@@ -443,6 +443,12 @@
 
   .tag-rolle { background: rgba(108, 92, 231, 0.12); color: var(--accent-light); }
   .tag-typ { background: rgba(0, 206, 201, 0.1); color: var(--green); }
+  .tag-tool { background: rgba(0, 206, 201, 0.1); color: var(--green); }
+  .tag-kontext { background: rgba(108, 92, 231, 0.12); color: var(--accent-light); }
+  .tag-status-entwurf { background: rgba(253, 203, 110, 0.15); color: var(--orange); }
+  .tag-status-review { background: rgba(108, 92, 231, 0.15); color: var(--accent-light); }
+  .tag-status-live { background: rgba(0, 206, 201, 0.15); color: var(--green); }
+  .tag-status-rohnotiz { background: rgba(253, 121, 121, 0.1); color: var(--red); }
 
   /* ── View Toggle ── */
   .view-toggle {
@@ -1339,9 +1345,10 @@
         const title = uc.titel || uc.title || uc._filename;
         const complexity = normalizeComplexity(uc.loesung_komplexitaet || uc.komplexitaet);
         const desc = uc.problem_beschreibung || '';
-        const rollen = Array.isArray(uc.zielgruppe_rolle || uc.rolle) ? (uc.zielgruppe_rolle || uc.rolle) : [];
-        const typ = uc.loesung_typ || uc.typ || '';
+        const tools = Array.isArray(uc.loesung_tools || uc.tools) ? (uc.loesung_tools || uc.tools) : (uc.loesung_tools || uc.tools ? [uc.loesung_tools || uc.tools] : []);
+        const kontext = Array.isArray(uc.problem_kontext) ? uc.problem_kontext : (uc.problem_kontext ? [uc.problem_kontext] : []);
         const kategorie = Array.isArray(uc.kategorie) ? uc.kategorie : (uc.kategorie ? [uc.kategorie] : []);
+        const status = uc.status || '';
 
         return `
           <div class="card" onclick="showDetail(${i})">
@@ -1351,9 +1358,10 @@
             </div>
             ${desc ? `<div class="card-description">${escHtml(desc)}</div>` : ''}
             <div class="card-tags">
-              ${rollen.map(r => `<span class="tag tag-rolle">${escHtml(r)}</span>`).join('')}
-              ${typ ? `<span class="tag tag-typ">${escHtml(Array.isArray(typ) ? typ.join(', ') : typ)}</span>` : ''}
+              ${tools.map(t => `<span class="tag tag-tool">${escHtml(t)}</span>`).join('')}
+              ${kontext.map(k => `<span class="tag tag-kontext">${escHtml(k)}</span>`).join('')}
               ${kategorie.map(k => `<span class="tag">${escHtml(k)}</span>`).join('')}
+              ${status ? `<span class="tag tag-status-${status}">${escHtml(status)}</span>` : ''}
             </div>
           </div>`;
       }).join('');
@@ -1419,11 +1427,11 @@
       ${uc.loesung_anleitung || uc.ki_anleitung_installation ? `
         <div class="modal-section">
           <div class="modal-section-label">Anleitung</div>
-          <div class="modal-section-content body-content" id="anleitungRendered">${renderMarkdown(uc.loesung_anleitung || uc.ki_anleitung_installation)}</div>
-          <div class="modal-section-content mono" id="anleitungRaw" style="display:none">${escHtml(uc.loesung_anleitung || uc.ki_anleitung_installation)}</div>
+          <div class="modal-section-content body-content" id="anleitungRendered" style="display:none">${renderMarkdown(uc.loesung_anleitung || uc.ki_anleitung_installation)}</div>
+          <div class="modal-section-content mono" id="anleitungRaw">${escHtml(uc.loesung_anleitung || uc.ki_anleitung_installation)}</div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
             <button class="btn-copy" onclick="copyFromElement(this, 'anleitungRaw')">📋 Anleitung kopieren</button>
-            <button class="raw-md-toggle" onclick="toggleMdView(this, 'anleitungRendered', 'anleitungRaw')">{ } Markdown</button>
+            <button class="raw-md-toggle active" onclick="toggleMdView(this, 'anleitungRendered', 'anleitungRaw')">{ } Vorschau</button>
           </div>
         </div>
       ` : ''}
