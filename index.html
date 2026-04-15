@@ -24,6 +24,26 @@
     --radius: 12px;
   }
 
+  [data-theme="light"] {
+    --bg: #f4f4f6;
+    --surface: #ffffff;
+    --surface-hover: #f0eff4;
+    --border: #dddce2;
+    --text: #1a1a2e;
+    --text-muted: #6b6b80;
+    --accent: #6c5ce7;
+    --accent-light: #5a4bd1;
+    --green: #00a89d;
+    --orange: #c8781a;
+    --red: #d94f4f;
+    --tag-bg: #eeedf3;
+  }
+
+  [data-theme="light"] .complexity-einfach { color: #059669; }
+  [data-theme="light"] .complexity-sofort { color: #0d9488; }
+  [data-theme="light"] .modal-overlay { background: rgba(0,0,0,0.4); }
+  [data-theme="light"] .filter-dropdown { box-shadow: 0 8px 32px rgba(0,0,0,0.12); }
+
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
   body {
@@ -669,6 +689,112 @@
     margin: 20px 0;
   }
 
+  /* ── Copy Button ── */
+  .copy-wrapper {
+    position: relative;
+  }
+
+  .btn-copy {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 14px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 10px;
+  }
+
+  .btn-copy:hover { background: #5a4bd1; }
+  .btn-copy.copied {
+    background: var(--green);
+    pointer-events: none;
+  }
+
+  /* ── Raw Markdown Viewer ── */
+  .raw-md-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 14px;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-muted);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.78rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .raw-md-toggle:hover {
+    border-color: var(--text-muted);
+    color: var(--text);
+  }
+
+  .raw-md-toggle.active {
+    background: rgba(108, 92, 231, 0.1);
+    border-color: var(--accent);
+    color: var(--accent-light);
+  }
+
+  .raw-md-container {
+    display: none;
+    margin-top: 12px;
+  }
+
+  .raw-md-container.show { display: block; }
+
+  .raw-md-content {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    line-height: 1.6;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    padding: 16px;
+    border-radius: 8px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 500px;
+    overflow-y: auto;
+    color: var(--text-muted);
+  }
+
+  .modal-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 16px;
+  }
+
+  /* ── Theme Toggle ── */
+  .btn-theme {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+
+  .btn-theme:hover {
+    color: var(--text);
+    border-color: var(--text-muted);
+  }
+
   /* ── Loading & Empty ── */
   .loading {
     display: flex;
@@ -763,6 +889,7 @@
           <button class="view-toggle-btn active" id="btnCardView" onclick="setView('cards')" title="Kachelansicht">▦</button>
           <button class="view-toggle-btn" id="btnListView" onclick="setView('list')" title="Listenansicht">☰</button>
         </div>
+        <button class="btn-theme" id="btnTheme" onclick="toggleTheme()" title="Light/Dark Mode">☀</button>
         <button class="btn-settings" onclick="disconnect()">⚙ Repo</button>
       </div>
     </div>
@@ -1026,7 +1153,7 @@
         }
       }
 
-      return { ...yaml, _body: body, _filename: filename };
+      return { ...yaml, _body: body, _filename: filename, _rawMarkdown: text };
     } catch(e) {
       console.warn(`YAML parse error in ${filename}:`, e);
       return null;
@@ -1306,7 +1433,8 @@
         <hr class="modal-divider">
         <div class="modal-section">
           <div class="modal-section-label">KI-Artefakt / Prompt</div>
-          <div class="modal-section-content mono">${escHtml(uc.loesung_ki_artefakt)}</div>
+          <div class="modal-section-content mono" id="promptText">${escHtml(uc.loesung_ki_artefakt)}</div>
+          <button class="btn-copy" onclick="copyFromElement(this, 'promptText')">📋 Prompt kopieren</button>
         </div>
       ` : ''}
 
@@ -1335,6 +1463,15 @@
             <div class="modal-section-content body-content">${renderMarkdown(remaining)}</div>
           </div>` : '';
       })()}
+
+      <hr class="modal-divider">
+      <div class="modal-actions">
+        <button class="raw-md-toggle" onclick="toggleRawMarkdown(this)">{ } Markdown anzeigen</button>
+      </div>
+      <div class="raw-md-container" id="rawMdContainer">
+        <div class="raw-md-content" id="rawMdContent">${escHtml(uc._rawMarkdown || '')}</div>
+        <button class="btn-copy" onclick="copyFromElement(this, 'rawMdContent')" style="margin-top:8px">📋 Markdown kopieren</button>
+      </div>
     `;
 
     document.getElementById('modalOverlay').classList.add('show');
@@ -1395,7 +1532,71 @@
     }
   });
 
+  // ── Copy to Clipboard ──
+  function copyFromElement(btn, elementId) {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+    const text = el.textContent || el.innerText;
+    navigator.clipboard.writeText(text).then(() => {
+      const orig = btn.innerHTML;
+      btn.innerHTML = '✓ Kopiert!';
+      btn.classList.add('copied');
+      setTimeout(() => {
+        btn.innerHTML = orig;
+        btn.classList.remove('copied');
+      }, 2000);
+    }).catch(() => {
+      // Fallback for older browsers
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      const orig = btn.innerHTML;
+      btn.innerHTML = '✓ Kopiert!';
+      btn.classList.add('copied');
+      setTimeout(() => {
+        btn.innerHTML = orig;
+        btn.classList.remove('copied');
+      }, 2000);
+    });
+  }
+
+  // ── Raw Markdown Toggle ──
+  function toggleRawMarkdown(btn) {
+    const container = document.getElementById('rawMdContainer');
+    const isVisible = container.classList.contains('show');
+    container.classList.toggle('show');
+    btn.classList.toggle('active');
+    btn.textContent = isVisible ? '{ } Markdown anzeigen' : '{ } Markdown ausblenden';
+  }
+
+  // ── Theme Toggle ──
+  function toggleTheme() {
+    const html = document.documentElement;
+    const current = html.getAttribute('data-theme');
+    const next = current === 'light' ? 'dark' : 'light';
+    html.setAttribute('data-theme', next === 'dark' ? '' : 'light');
+    if (next === 'dark') html.removeAttribute('data-theme');
+    document.getElementById('btnTheme').textContent = next === 'light' ? '🌙' : '☀';
+    try { localStorage.setItem('ucfinder_theme', next); } catch(e) {}
+  }
+
+  function loadTheme() {
+    try {
+      const saved = localStorage.getItem('ucfinder_theme');
+      if (saved === 'light') {
+        document.documentElement.setAttribute('data-theme', 'light');
+        document.getElementById('btnTheme').textContent = '🌙';
+      }
+    } catch(e) {}
+  }
+
   // ── Init ──
+  loadTheme();
   if (loadConfig()) {
     showApp();
   }
