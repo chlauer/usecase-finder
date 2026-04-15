@@ -524,19 +524,22 @@
     background: var(--border);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    overflow: hidden;
+    overflow-x: auto;
+    overflow-y: visible;
+    min-width: 0;
   }
 
   .list-row {
     display: grid;
-    grid-template-columns: 1fr minmax(120px, auto) minmax(120px, auto) 90px;
+    grid-template-columns: 70px 1fr 90px auto auto auto auto;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
     padding: 10px 16px;
     background: var(--surface);
     cursor: pointer;
     transition: background 0.15s;
     font-size: 0.85rem;
+    min-width: 800px;
   }
 
   .list-row:hover { background: var(--surface-hover); }
@@ -576,13 +579,6 @@
     color: var(--accent-light);
   }
 
-  .list-col-title {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 0;
-  }
-
   .list-title {
     font-weight: 500;
     white-space: nowrap;
@@ -592,9 +588,10 @@
 
   .list-id {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.65rem;
+    font-size: 0.7rem;
     color: var(--text-muted);
-    opacity: 0.5;
+    opacity: 0.6;
+    white-space: nowrap;
   }
 
   .list-col-tags {
@@ -609,7 +606,7 @@
   }
 
   .list-col-status {
-    text-align: right;
+    text-align: center;
   }
 
   .list-status {
@@ -628,18 +625,8 @@
 
   @media (max-width: 640px) {
     .list-row {
-      grid-template-columns: 1fr auto;
-      gap: 6px;
+      min-width: 700px;
     }
-    .list-col-tags { display: none; }
-  }
-
-  @media (max-width: 820px) and (min-width: 641px) {
-    .list-row {
-      grid-template-columns: 1fr minmax(100px, auto) 80px;
-    }
-    .list-col-tags:last-of-type { display: none; }
-    .list-row-header > :nth-child(3) { display: none; }
   }
 
   /* ── Detail Modal ── */
@@ -979,7 +966,7 @@
   let activeFilters = {}; // { fieldName: selectedValue }
   let config = {};
   let viewMode = 'cards'; // 'cards' or 'list'
-  let listSort = { field: 'titel', dir: 'asc' };
+  let listSort = { field: 'id', dir: 'asc' };
 
   // Filter definitions: which fields to show as filter buttons
   const FILTER_FIELDS = [
@@ -1408,27 +1395,31 @@
         return listSort.dir === 'asc' ? '<span class="sort-icon active">↑</span>' : '<span class="sort-icon active">↓</span>';
       };
 
-      // Sort items
-      const sorted = [...items].sort((a, b) => {
-        const field = listSort.field;
-        let valA, valB;
-        if (field === 'titel') {
-          valA = (a.titel || a.title || a._filename || '').toLowerCase();
-          valB = (b.titel || b.title || b._filename || '').toLowerCase();
-        } else if (field === 'typ') {
-          const tA = a.loesung_typ || a.typ || '';
-          const tB = b.loesung_typ || b.typ || '';
-          valA = (Array.isArray(tA) ? tA[0] : tA || '').toLowerCase();
-          valB = (Array.isArray(tB) ? tB[0] : tB || '').toLowerCase();
-        } else if (field === 'kategorie') {
-          valA = (Array.isArray(a.kategorie) ? a.kategorie[0] : a.kategorie || '').toLowerCase();
-          valB = (Array.isArray(b.kategorie) ? b.kategorie[0] : b.kategorie || '').toLowerCase();
-        } else if (field === 'status') {
-          valA = (a.status || '').toLowerCase();
-          valB = (b.status || '').toLowerCase();
-        } else {
-          valA = ''; valB = '';
+      const getVal = (uc, field) => {
+        if (field === 'id') return (uc.id || '').toLowerCase();
+        if (field === 'titel') return (uc.titel || uc.title || uc._filename || '').toLowerCase();
+        if (field === 'status') return (uc.status || '').toLowerCase();
+        if (field === 'tool') {
+          const t = uc.loesung_tools || uc.tools || '';
+          return (Array.isArray(t) ? t[0] : t || '').toLowerCase();
         }
+        if (field === 'typ') {
+          const t = uc.loesung_typ || uc.typ || '';
+          return (Array.isArray(t) ? t[0] : t || '').toLowerCase();
+        }
+        if (field === 'kategorie') {
+          return (Array.isArray(uc.kategorie) ? uc.kategorie[0] : uc.kategorie || '').toLowerCase();
+        }
+        if (field === 'kontext') {
+          const k = uc.problem_kontext || '';
+          return (Array.isArray(k) ? k[0] : k || '').toLowerCase();
+        }
+        return '';
+      };
+
+      const sorted = [...items].sort((a, b) => {
+        const valA = getVal(a, listSort.field);
+        const valB = getVal(b, listSort.field);
         if (valA < valB) return listSort.dir === 'asc' ? -1 : 1;
         if (valA > valB) return listSort.dir === 'asc' ? 1 : -1;
         return 0;
@@ -1436,10 +1427,13 @@
 
       container.innerHTML = `
         <div class="list-row list-row-header">
-          <span class="list-col-title sortable" onclick="sortList('titel')">Titel ${sortIcon('titel')}</span>
-          <span class="list-col-tags sortable" onclick="sortList('typ')">Typ / Tools ${sortIcon('typ')}</span>
-          <span class="list-col-tags sortable" onclick="sortList('kategorie')">Kategorie / Kontext ${sortIcon('kategorie')}</span>
-          <span class="list-col-status sortable" onclick="sortList('status')">Status ${sortIcon('status')}</span>
+          <span class="sortable" onclick="sortList('id')">ID ${sortIcon('id')}</span>
+          <span class="sortable" onclick="sortList('titel')">Titel ${sortIcon('titel')}</span>
+          <span class="sortable" onclick="sortList('status')">Status ${sortIcon('status')}</span>
+          <span class="sortable" onclick="sortList('tool')">Tool ${sortIcon('tool')}</span>
+          <span class="sortable" onclick="sortList('typ')">Typ ${sortIcon('typ')}</span>
+          <span class="sortable" onclick="sortList('kategorie')">Kategorie ${sortIcon('kategorie')}</span>
+          <span class="sortable" onclick="sortList('kontext')">Kontext ${sortIcon('kontext')}</span>
         </div>` +
         sorted.map((uc, i) => {
           const title = uc.titel || uc.title || uc._filename;
@@ -1449,27 +1443,17 @@
           const tools = Array.isArray(uc.loesung_tools || uc.tools) ? (uc.loesung_tools || uc.tools) : (uc.loesung_tools || uc.tools ? [uc.loesung_tools || uc.tools] : []);
           const kategorie = Array.isArray(uc.kategorie) ? uc.kategorie : (uc.kategorie ? [uc.kategorie] : []);
           const kontext = Array.isArray(uc.problem_kontext) ? uc.problem_kontext : (uc.problem_kontext ? [uc.problem_kontext] : []);
-
-          // Find original index in _filteredItems for detail view
           const origIdx = items.indexOf(uc);
 
           return `
             <div class="list-row" onclick="showDetail(${origIdx})">
-              <div class="list-col-title">
-                <span class="list-title">${escHtml(title)}</span>
-                ${id ? `<span class="list-id">${escHtml(id)}</span>` : ''}
-              </div>
-              <div class="list-col-tags">
-                ${typ ? `<span class="tag tag-typ">${escHtml(Array.isArray(typ) ? typ.join(', ') : typ)}</span>` : ''}
-                ${tools.map(t => `<span class="tag tag-tool">${escHtml(t)}</span>`).join('')}
-              </div>
-              <div class="list-col-tags">
-                ${kategorie.map(k => `<span class="tag tag-kategorie">${escHtml(k)}</span>`).join('')}
-                ${kontext.map(k => `<span class="tag tag-kontext">${escHtml(k)}</span>`).join('')}
-              </div>
-              <div class="list-col-status">
-                ${status ? `<span class="list-status list-status-${statusSlug(status)}">${escHtml(status)}</span>` : ''}
-              </div>
+              <span class="list-id">${escHtml(id)}</span>
+              <span class="list-title">${escHtml(title)}</span>
+              <span class="list-col-status">${status ? `<span class="list-status list-status-${statusSlug(status)}">${escHtml(status)}</span>` : ''}</span>
+              <span class="list-col-tags">${tools.map(t => `<span class="tag tag-tool">${escHtml(t)}</span>`).join('')}</span>
+              <span class="list-col-tags">${typ ? `<span class="tag tag-typ">${escHtml(Array.isArray(typ) ? typ.join(', ') : typ)}</span>` : ''}</span>
+              <span class="list-col-tags">${kategorie.map(k => `<span class="tag tag-kategorie">${escHtml(k)}</span>`).join('')}</span>
+              <span class="list-col-tags">${kontext.map(k => `<span class="tag tag-kontext">${escHtml(k)}</span>`).join('')}</span>
             </div>`;
         }).join('');
     } else {
