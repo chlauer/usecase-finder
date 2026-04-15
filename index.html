@@ -433,6 +433,15 @@
     gap: 5px;
   }
 
+  .card-id {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    opacity: 0.5;
+    margin-top: 8px;
+    text-align: right;
+  }
+
   .tag {
     padding: 3px 9px;
     background: var(--tag-bg);
@@ -1363,6 +1372,7 @@
               ${kategorie.map(k => `<span class="tag">${escHtml(k)}</span>`).join('')}
               ${status ? `<span class="tag tag-status-${status}">${escHtml(status)}</span>` : ''}
             </div>
+            ${uc.id ? `<div class="card-id">${escHtml(uc.id)}</div>` : ''}
           </div>`;
       }).join('');
     }
