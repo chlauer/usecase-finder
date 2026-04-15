@@ -744,28 +744,6 @@
     color: var(--accent-light);
   }
 
-  .raw-md-container {
-    display: none;
-    margin-top: 12px;
-  }
-
-  .raw-md-container.show { display: block; }
-
-  .raw-md-content {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.75rem;
-    line-height: 1.6;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    padding: 16px;
-    border-radius: 8px;
-    white-space: pre-wrap;
-    word-break: break-word;
-    max-height: 500px;
-    overflow-y: auto;
-    color: var(--text-muted);
-  }
-
   .modal-actions {
     display: flex;
     gap: 8px;
@@ -1153,7 +1131,7 @@
         }
       }
 
-      return { ...yaml, _body: body, _filename: filename, _rawMarkdown: text };
+      return { ...yaml, _body: body, _filename: filename };
     } catch(e) {
       console.warn(`YAML parse error in ${filename}:`, e);
       return null;
@@ -1441,7 +1419,12 @@
       ${uc.loesung_anleitung || uc.ki_anleitung_installation ? `
         <div class="modal-section">
           <div class="modal-section-label">Anleitung</div>
-          <div class="modal-section-content">${escHtml(uc.loesung_anleitung || uc.ki_anleitung_installation)}</div>
+          <div class="modal-section-content body-content" id="anleitungRendered">${renderMarkdown(uc.loesung_anleitung || uc.ki_anleitung_installation)}</div>
+          <div class="modal-section-content mono" id="anleitungRaw" style="display:none">${escHtml(uc.loesung_anleitung || uc.ki_anleitung_installation)}</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+            <button class="btn-copy" onclick="copyFromElement(this, 'anleitungRaw')">📋 Anleitung kopieren</button>
+            <button class="raw-md-toggle" onclick="toggleMdView(this, 'anleitungRendered', 'anleitungRaw')">{ } Markdown</button>
+          </div>
         </div>
       ` : ''}
 
@@ -1463,15 +1446,6 @@
             <div class="modal-section-content body-content">${renderMarkdown(remaining)}</div>
           </div>` : '';
       })()}
-
-      <hr class="modal-divider">
-      <div class="modal-actions">
-        <button class="raw-md-toggle" onclick="toggleRawMarkdown(this)">{ } Markdown anzeigen</button>
-      </div>
-      <div class="raw-md-container" id="rawMdContainer">
-        <div class="raw-md-content" id="rawMdContent">${escHtml(uc._rawMarkdown || '')}</div>
-        <button class="btn-copy" onclick="copyFromElement(this, 'rawMdContent')" style="margin-top:8px">📋 Markdown kopieren</button>
-      </div>
     `;
 
     document.getElementById('modalOverlay').classList.add('show');
@@ -1565,13 +1539,15 @@
     });
   }
 
-  // ── Raw Markdown Toggle ──
-  function toggleRawMarkdown(btn) {
-    const container = document.getElementById('rawMdContainer');
-    const isVisible = container.classList.contains('show');
-    container.classList.toggle('show');
+  // ── Markdown View Toggle ──
+  function toggleMdView(btn, renderedId, rawId) {
+    const rendered = document.getElementById(renderedId);
+    const raw = document.getElementById(rawId);
+    const showingRaw = raw.style.display !== 'none';
+    rendered.style.display = showingRaw ? '' : 'none';
+    raw.style.display = showingRaw ? 'none' : '';
     btn.classList.toggle('active');
-    btn.textContent = isVisible ? '{ } Markdown anzeigen' : '{ } Markdown ausblenden';
+    btn.textContent = showingRaw ? '{ } Markdown' : '{ } Vorschau';
   }
 
   // ── Theme Toggle ──
