@@ -395,13 +395,6 @@
     margin-bottom: 10px;
   }
 
-  .card-header-badges {
-    display: flex;
-    gap: 6px;
-    flex-shrink: 0;
-    align-items: center;
-  }
-
   .card-title {
     font-size: 0.95rem;
     font-weight: 600;
@@ -427,10 +420,11 @@
     letter-spacing: 0.03em;
   }
 
-  .card-status-entwurf { background: rgba(253, 203, 110, 0.15); color: var(--orange); }
-  .card-status-review { background: rgba(108, 92, 231, 0.15); color: var(--accent-light); }
-  .card-status-live { background: rgba(0, 206, 201, 0.15); color: var(--green); }
-  .card-status-rohnotiz { background: rgba(253, 121, 121, 0.1); color: var(--red); }
+  .card-status-rot { background: rgba(253, 121, 121, 0.15); color: var(--red); }
+  .card-status-gelb { background: rgba(253, 203, 110, 0.15); color: var(--orange); }
+  .card-status-blau { background: rgba(108, 92, 231, 0.15); color: var(--accent-light); }
+  .card-status-gruen { background: rgba(0, 206, 201, 0.15); color: var(--green); }
+  .card-status-default { background: var(--tag-bg); color: var(--text-muted); }
 
   .complexity-sofort { background: rgba(0, 206, 201, 0.15); color: var(--green); }
   .complexity-einfach { background: rgba(0, 206, 201, 0.1); color: #55efc4; }
@@ -475,10 +469,7 @@
   .tag-typ { background: rgba(0, 206, 201, 0.1); color: var(--green); }
   .tag-tool { background: rgba(0, 206, 201, 0.1); color: var(--green); }
   .tag-kontext { background: rgba(108, 92, 231, 0.12); color: var(--accent-light); }
-  .tag-status-entwurf { background: rgba(253, 203, 110, 0.15); color: var(--orange); }
-  .tag-status-review { background: rgba(108, 92, 231, 0.15); color: var(--accent-light); }
-  .tag-status-live { background: rgba(0, 206, 201, 0.15); color: var(--green); }
-  .tag-status-rohnotiz { background: rgba(253, 121, 121, 0.1); color: var(--red); }
+  .tag-complexity { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.03em; }
 
   /* ── View Toggle ── */
   .view-toggle {
@@ -570,10 +561,11 @@
     white-space: nowrap;
   }
 
-  .list-status-entwurf { background: rgba(253, 203, 110, 0.15); color: var(--orange); }
-  .list-status-review { background: rgba(108, 92, 231, 0.15); color: var(--accent-light); }
-  .list-status-live { background: rgba(0, 206, 201, 0.15); color: var(--green); }
-  .list-status-rohnotiz { background: rgba(253, 121, 121, 0.1); color: var(--red); }
+  .list-status-rot { background: rgba(253, 121, 121, 0.15); color: var(--red); }
+  .list-status-gelb { background: rgba(253, 203, 110, 0.15); color: var(--orange); }
+  .list-status-blau { background: rgba(108, 92, 231, 0.15); color: var(--accent-light); }
+  .list-status-gruen { background: rgba(0, 206, 201, 0.15); color: var(--green); }
+  .list-status-default { background: var(--tag-bg); color: var(--text-muted); }
 
   .list-meta {
     color: var(--text-muted);
@@ -1367,7 +1359,7 @@
               <span class="list-title">${escHtml(title)}</span>
               <span class="list-meta">${escHtml(typStr)}</span>
               ${complexity ? `<span class="card-complexity complexity-${complexity}" style="font-size:0.68rem">${complexity}</span>` : '<span></span>'}
-              <span class="list-status list-status-${status}">${escHtml(status)}</span>
+              <span class="list-status list-status-${statusSlug(status)}">${escHtml(status)}</span>
             </div>`;
         }).join('');
     } else {
@@ -1385,15 +1377,13 @@
           <div class="card" onclick="showDetail(${i})">
             <div class="card-header">
               <div class="card-title">${escHtml(title)}</div>
-              <div class="card-header-badges">
-                ${status ? `<span class="card-status card-status-${status}">${escHtml(status)}</span>` : ''}
-                ${complexity ? `<span class="card-complexity complexity-${complexity}">${complexity}</span>` : ''}
-              </div>
+              ${status ? `<span class="card-status card-status-${statusSlug(status)}">${escHtml(status)}</span>` : ''}
             </div>
             ${desc ? `<div class="card-description">${escHtml(desc)}</div>` : ''}
             <div class="card-tags">
               ${tools.map(t => `<span class="tag tag-tool">${escHtml(t)}</span>`).join('')}
               ${typ ? `<span class="tag tag-typ">${escHtml(Array.isArray(typ) ? typ.join(', ') : typ)}</span>` : ''}
+              ${complexity ? `<span class="tag tag-complexity complexity-${complexity}">${complexity}</span>` : ''}
               ${kontext.map(k => `<span class="tag tag-kontext">${escHtml(k)}</span>`).join('')}
               ${kategorie.map(k => `<span class="tag">${escHtml(k)}</span>`).join('')}
             </div>
@@ -1518,6 +1508,16 @@
     if (s.startsWith('mittel')) return 'mittel';
     if (s.startsWith('fortgeschritten') || s.startsWith('hoch')) return 'fortgeschritten';
     return s.split('(')[0].split(' ')[0].trim();
+  }
+
+  function statusSlug(status) {
+    if (!status) return '';
+    const s = String(status).toLowerCase().trim();
+    if (s === 'neu' || s === 'entwurf' || s === 'rohnotiz') return 'rot';
+    if (s === 'in überarbeitung' || s === 'in bearbeitung' || s === 'überarbeitung') return 'gelb';
+    if (s === 'getestet' || s === 'review') return 'blau';
+    if (s === 'freigegeben' || s === 'live') return 'gruen';
+    return 'default';
   }
 
   function renderMarkdown(text) {
