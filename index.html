@@ -442,6 +442,12 @@
     overflow: hidden;
   }
 
+  .card-tag-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
   .card-tags {
     display: flex;
     flex-wrap: wrap;
@@ -466,9 +472,10 @@
   }
 
   .tag-rolle { background: rgba(108, 92, 231, 0.12); color: var(--accent-light); }
-  .tag-typ { background: rgba(0, 206, 201, 0.1); color: var(--green); }
-  .tag-tool { background: rgba(0, 206, 201, 0.1); color: var(--green); }
-  .tag-kontext { background: rgba(108, 92, 231, 0.12); color: var(--accent-light); }
+  .tag-typ { background: rgba(0, 206, 201, 0.12); color: var(--green); }
+  .tag-tool { background: rgba(0, 206, 201, 0.08); color: var(--green); border: 1px solid rgba(0, 206, 201, 0.2); }
+  .tag-kategorie { background: rgba(253, 203, 110, 0.12); color: var(--orange); }
+  .tag-kontext { background: rgba(108, 92, 231, 0.1); color: var(--accent-light); }
   .tag-complexity { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.03em; }
 
   /* ── View Toggle ── */
@@ -1365,13 +1372,14 @@
     } else {
       container.innerHTML = items.map((uc, i) => {
         const title = uc.titel || uc.title || uc._filename;
-        const complexity = normalizeComplexity(uc.loesung_komplexitaet || uc.komplexitaet);
         const desc = uc.problem_beschreibung || '';
         const tools = Array.isArray(uc.loesung_tools || uc.tools) ? (uc.loesung_tools || uc.tools) : (uc.loesung_tools || uc.tools ? [uc.loesung_tools || uc.tools] : []);
         const kontext = Array.isArray(uc.problem_kontext) ? uc.problem_kontext : (uc.problem_kontext ? [uc.problem_kontext] : []);
         const kategorie = Array.isArray(uc.kategorie) ? uc.kategorie : (uc.kategorie ? [uc.kategorie] : []);
         const status = uc.status || '';
         const typ = uc.loesung_typ || uc.typ || '';
+        const hasRow1 = typ || tools.length;
+        const hasRow2 = kategorie.length || kontext.length;
 
         return `
           <div class="card" onclick="showDetail(${i})">
@@ -1380,12 +1388,15 @@
               ${status ? `<span class="card-status card-status-${statusSlug(status)}">${escHtml(status)}</span>` : ''}
             </div>
             ${desc ? `<div class="card-description">${escHtml(desc)}</div>` : ''}
-            <div class="card-tags">
-              ${tools.map(t => `<span class="tag tag-tool">${escHtml(t)}</span>`).join('')}
-              ${typ ? `<span class="tag tag-typ">${escHtml(Array.isArray(typ) ? typ.join(', ') : typ)}</span>` : ''}
-              ${complexity ? `<span class="tag tag-complexity complexity-${complexity}">${complexity}</span>` : ''}
-              ${kontext.map(k => `<span class="tag tag-kontext">${escHtml(k)}</span>`).join('')}
-              ${kategorie.map(k => `<span class="tag">${escHtml(k)}</span>`).join('')}
+            <div class="card-tag-rows">
+              ${hasRow1 ? `<div class="card-tags">
+                ${typ ? `<span class="tag tag-typ">${escHtml(Array.isArray(typ) ? typ.join(', ') : typ)}</span>` : ''}
+                ${tools.map(t => `<span class="tag tag-tool">${escHtml(t)}</span>`).join('')}
+              </div>` : ''}
+              ${hasRow2 ? `<div class="card-tags">
+                ${kategorie.map(k => `<span class="tag tag-kategorie">${escHtml(k)}</span>`).join('')}
+                ${kontext.map(k => `<span class="tag tag-kontext">${escHtml(k)}</span>`).join('')}
+              </div>` : ''}
             </div>
             ${uc.id ? `<div class="card-id">${escHtml(uc.id)}</div>` : ''}
           </div>`;
