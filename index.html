@@ -531,7 +531,7 @@
 
   .list-row {
     display: grid;
-    grid-template-columns: 70px 1fr 90px auto auto auto auto;
+    grid-template-columns: 70px minmax(200px, 1fr) 100px 120px 100px 120px 120px;
     align-items: center;
     gap: 10px;
     padding: 10px 16px;
@@ -539,7 +539,7 @@
     cursor: pointer;
     transition: background 0.15s;
     font-size: 0.85rem;
-    min-width: 800px;
+    min-width: 850px;
   }
 
   .list-row:hover { background: var(--surface-hover); }
@@ -606,7 +606,7 @@
   }
 
   .list-col-status {
-    text-align: center;
+    text-align: left;
   }
 
   .list-status {
@@ -625,7 +625,7 @@
 
   @media (max-width: 640px) {
     .list-row {
-      min-width: 700px;
+      min-width: 850px;
     }
   }
 
