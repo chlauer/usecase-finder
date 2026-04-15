@@ -478,6 +478,7 @@
   .tag-tool { background: rgba(86, 127, 232, 0.12); color: #7ba3f7; }
   .tag-kategorie { background: rgba(253, 203, 110, 0.12); color: var(--orange); }
   .tag-kontext { background: rgba(214, 120, 195, 0.12); color: #d678c3; }
+  .tag-more { background: var(--tag-bg); color: var(--text-muted); font-size: 0.63rem; opacity: 0.7; }
   .tag-complexity { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.03em; }
 
   /* ── View Toggle ── */
@@ -1450,10 +1451,10 @@
               <span class="list-id">${escHtml(id)}</span>
               <span class="list-title">${escHtml(title)}</span>
               <span class="list-col-status">${status ? `<span class="list-status list-status-${statusSlug(status)}">${escHtml(status)}</span>` : ''}</span>
-              <span class="list-col-tags">${tools.map(t => `<span class="tag tag-tool">${escHtml(t)}</span>`).join('')}</span>
+              <span class="list-col-tags">${limitTags(tools, 'tag-tool', 2)}</span>
               <span class="list-col-tags">${typ ? `<span class="tag tag-typ">${escHtml(Array.isArray(typ) ? typ.join(', ') : typ)}</span>` : ''}</span>
-              <span class="list-col-tags">${kategorie.map(k => `<span class="tag tag-kategorie">${escHtml(k)}</span>`).join('')}</span>
-              <span class="list-col-tags">${kontext.map(k => `<span class="tag tag-kontext">${escHtml(k)}</span>`).join('')}</span>
+              <span class="list-col-tags">${limitTags(kategorie, 'tag-kategorie', 2)}</span>
+              <span class="list-col-tags">${limitTags(kontext, 'tag-kontext', 2)}</span>
             </div>`;
         }).join('');
     } else {
@@ -1616,6 +1617,15 @@
     if (s === 'getestet' || s === 'review') return 'blau';
     if (s === 'freigegeben' || s === 'live') return 'gruen';
     return 'default';
+  }
+
+  function limitTags(arr, cssClass, max) {
+    if (!arr || arr.length === 0) return '';
+    const shown = arr.slice(0, max);
+    const rest = arr.length - max;
+    let html = shown.map(v => `<span class="tag ${cssClass}">${escHtml(v)}</span>`).join('');
+    if (rest > 0) html += `<span class="tag tag-more">+${rest}</span>`;
+    return html;
   }
 
   function renderMarkdown(text) {
