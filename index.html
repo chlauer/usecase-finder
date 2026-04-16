@@ -424,8 +424,10 @@
 
   .card-status-rot { background: rgba(253, 121, 121, 0.15); color: var(--red); }
   .card-status-gelb { background: rgba(253, 203, 110, 0.15); color: var(--orange); }
+  .card-status-orange { background: rgba(230, 126, 34, 0.15); color: #e67e22; }
   .card-status-blau { background: rgba(108, 92, 231, 0.15); color: var(--accent-light); }
   .card-status-gruen { background: rgba(0, 206, 201, 0.15); color: var(--green); }
+  .card-status-archiv { background: rgba(100, 100, 120, 0.15); color: var(--text-muted); }
   .card-status-default { background: var(--tag-bg); color: var(--text-muted); }
 
   .complexity-sofort { background: rgba(0, 206, 201, 0.15); color: var(--green); }
@@ -620,8 +622,10 @@
 
   .list-status-rot { background: rgba(253, 121, 121, 0.15); color: var(--red); }
   .list-status-gelb { background: rgba(253, 203, 110, 0.15); color: var(--orange); }
+  .list-status-orange { background: rgba(230, 126, 34, 0.15); color: #e67e22; }
   .list-status-blau { background: rgba(108, 92, 231, 0.15); color: var(--accent-light); }
   .list-status-gruen { background: rgba(0, 206, 201, 0.15); color: var(--green); }
+  .list-status-archiv { background: rgba(100, 100, 120, 0.15); color: var(--text-muted); }
   .list-status-default { background: var(--tag-bg); color: var(--text-muted); }
 
   @media (max-width: 640px) {
@@ -1146,6 +1150,18 @@
         'komplexitaet': 'loesung_komplexitaet',
         'oekosystem': 'loesung_oekosystem',
       };
+
+      // Normalize loesung_typ old values to new names
+      if (yaml.loesung_typ) {
+        const typMap = {
+          'Bot': 'CustomGPT',
+          'Copilot Agent': 'Copilot-Agent',
+          'Skill': 'CustomGPT',
+        };
+        if (typeof yaml.loesung_typ === 'string' && typMap[yaml.loesung_typ]) {
+          yaml.loesung_typ = typMap[yaml.loesung_typ];
+        }
+      }
       for (const [oldName, newName] of Object.entries(fieldMap)) {
         if (yaml[oldName] && !yaml[newName]) {
           yaml[newName] = yaml[oldName];
@@ -1155,6 +1171,21 @@
       // Normalize complexity to short label
       if (yaml.loesung_komplexitaet) {
         yaml.loesung_komplexitaet = normalizeComplexity(yaml.loesung_komplexitaet);
+      }
+
+      // Normalize anpassungsbedarf old values to new short form
+      if (yaml.loesung_anpassungsbedarf) {
+        const a = String(yaml.loesung_anpassungsbedarf).trim();
+        if (a === '0 – direkt nutzbar' || a === '0' || a.startsWith('direkt')) yaml.loesung_anpassungsbedarf = 'direkt nutzbar';
+        else if (a.startsWith('gering') || a.includes('1–2') || a.includes('1-2')) yaml.loesung_anpassungsbedarf = 'gering';
+        else if (a.startsWith('mittel')) yaml.loesung_anpassungsbedarf = 'mittel';
+        else if (a.startsWith('hoch') || a.includes('umfassend')) yaml.loesung_anpassungsbedarf = 'hoch';
+      }
+
+      // Normalize datenschutz_level old values
+      if (yaml.loesung_datenschutz_level) {
+        const d = String(yaml.loesung_datenschutz_level).trim();
+        if (d === 'nur Enterprise-Tools' || d.toLowerCase().includes('enterprise')) yaml.loesung_datenschutz_level = 'Enterprise-Tool';
       }
 
       // Normalize array fields (handle comma-separated strings)
@@ -1318,6 +1349,10 @@
     const query = document.getElementById('searchInput').value.toLowerCase().trim();
 
     const filtered = useCases.filter(uc => {
+      // Hide archived use cases unless explicitly filtered for
+      const statusVal = String(uc.status || '').toLowerCase().trim();
+      if (statusVal === 'archiviert' && !('status' in activeFilters)) return false;
+
       // Text search across multiple fields
       if (query) {
         const searchable = [
@@ -1612,10 +1647,12 @@
   function statusSlug(status) {
     if (!status) return '';
     const s = String(status).toLowerCase().trim();
-    if (s === 'neu' || s === 'entwurf' || s === 'rohnotiz') return 'rot';
-    if (s === 'in überarbeitung' || s === 'in bearbeitung' || s === 'überarbeitung') return 'gelb';
+    if (s === 'neu') return 'rot';
+    if (s === 'in prüfung' || s === 'entwurf' || s === 'rohnotiz') return 'gelb';
+    if (s === 'in überarbeitung' || s === 'in bearbeitung' || s === 'überarbeitung') return 'orange';
     if (s === 'getestet' || s === 'review') return 'blau';
     if (s === 'freigegeben' || s === 'live') return 'gruen';
+    if (s === 'archiviert') return 'archiv';
     return 'default';
   }
 
