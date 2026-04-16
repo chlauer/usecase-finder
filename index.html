@@ -1207,11 +1207,17 @@
       let sectionMatch;
       const sectionPositions = [];
       while ((sectionMatch = sectionRegex.exec(body)) !== null) {
-        sectionPositions.push({ title: sectionMatch[1].trim(), start: sectionMatch.index + sectionMatch[0].length });
+        // Store: where the heading starts (for end calculation) and where content starts (after heading)
+        sectionPositions.push({
+          title: sectionMatch[1].trim(),
+          headingStart: sectionMatch.index,
+          contentStart: sectionMatch.index + sectionMatch[0].length
+        });
       }
       for (let i = 0; i < sectionPositions.length; i++) {
-        const end = i + 1 < sectionPositions.length ? body.lastIndexOf('\n##', sectionPositions[i + 1].start) : body.length;
-        const content = body.substring(sectionPositions[i].start, end).trim();
+        // End is the start of the NEXT section's heading line (not its content)
+        const end = i + 1 < sectionPositions.length ? sectionPositions[i + 1].headingStart : body.length;
+        const content = body.substring(sectionPositions[i].contentStart, end).trim();
         sections[sectionPositions[i].title] = content;
       }
 
@@ -1227,7 +1233,11 @@
       };
       for (const [heading, field] of Object.entries(sectionMap)) {
         if (sections[heading] && !yaml[field]) {
-          yaml[field] = sections[heading];
+          // Strip any stray ## headings that leaked into the section content
+          let cleaned = sections[heading].replace(/\n##\s+.*/g, '').trim();
+          // Also strip trailing "-e" artifact common in these files
+          cleaned = cleaned.replace(/\s*-e\s*$/, '').trim();
+          yaml[field] = cleaned;
         }
       }
 
@@ -1495,7 +1505,8 @@
     } else {
       container.innerHTML = items.map((uc, i) => {
         const title = uc.titel || uc.title || uc._filename;
-        const desc = uc.problem_beschreibung || '';
+        // Clean description: strip stray ## headings and -e artifacts
+        const desc = (uc.problem_beschreibung || '').replace(/\n##\s+.*/g, '').replace(/\s*-e\s*$/, '').trim();
         const tools = Array.isArray(uc.loesung_tools || uc.tools) ? (uc.loesung_tools || uc.tools) : (uc.loesung_tools || uc.tools ? [uc.loesung_tools || uc.tools] : []);
         const kontext = Array.isArray(uc.problem_kontext) ? uc.problem_kontext : (uc.problem_kontext ? [uc.problem_kontext] : []);
         const kategorie = Array.isArray(uc.kategorie) ? uc.kategorie : (uc.kategorie ? [uc.kategorie] : []);
